@@ -1,0 +1,53 @@
+name: web-ci
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web-ci.yml"
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - working-directory: web/app
+        run: |
+          npm install --no-audit --no-fund
+          npm run lint
+          npm run typecheck
+
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - working-directory: web/app
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+      - working-directory: web/app
+        run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    if: false  # Playwright job placeholder; enabled when e2e suite lands
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - working-directory: web/app
+        run: |
+          npm install --no-audit --no-fund
+          npm run e2e

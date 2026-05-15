@@ -286,3 +286,6 @@ profiles.json
 
 # MSBuildCache
 /MSBuildCacheLogs/
+# Web Terminal slice
+web/**/node_modules/
+web/app/dist/

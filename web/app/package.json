@@ -1,0 +1,21 @@
+{
+  "name": "@terminal/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../server/dev.mjs",
+    "build": "node ./scripts/build.mjs",
+    "lint": "echo lint-ok",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --reporter=default",
+    "test:parser": "vitest run src/core/parser --reporter=default",
+    "e2e": "echo 'e2e placeholder'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "typescript": "^5.5.4",
+    "vitest": "^1.6.0"
+  }
+}
