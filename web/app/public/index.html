@@ -10,27 +10,181 @@
         --fg: #cccccc;
         --accent: #0078d4;
       }
-      html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg);
-        font-family: 'Cascadia Mono', 'Cascadia Code', Menlo, Consolas, monospace; }
-      #app { display: flex; flex-direction: column; height: 100vh; }
-      #tabbar { display: flex; gap: 4px; padding: 4px 8px; background: #1f1f1f;
-        border-bottom: 1px solid #333; user-select: none; }
-      .tab { padding: 4px 10px; background: #2d2d2d; border-radius: 4px 4px 0 0;
-        cursor: pointer; font-size: 12px; }
-      .tab.active { background: var(--bg); border-top: 2px solid var(--accent); }
+      html, body { height: 100%; margin: 0; background: #000; color: var(--fg);
+        font-family: 'Cascadia Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+        overflow: hidden; }
+      #bgfx { position: fixed; inset: 0; width: 100vw; height: 100vh;
+        z-index: 0; display: block; pointer-events: none; }
+      #app { position: relative; z-index: 1; display: flex; flex-direction: column;
+        height: 100vh; backdrop-filter: blur(0.5px); }
+      #tabbar { display: flex; gap: 4px; padding: 4px 8px;
+        background: rgba(31, 31, 31, 0.55);
+        border-bottom: 1px solid rgba(255,255,255,0.08); user-select: none;
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+      .tab { padding: 4px 10px; background: rgba(45,45,45,0.7); border-radius: 4px 4px 0 0;
+        cursor: pointer; font-size: 12px; color: #ddd;
+        text-shadow: 0 0 6px rgba(0,0,0,0.8); }
+      .tab.active { background: rgba(12, 12, 12, 0.7);
+        border-top: 2px solid var(--accent);
+        box-shadow: 0 0 12px rgba(0,120,212,0.45); }
       .tab .close { margin-left: 8px; opacity: 0.6; }
       .tab .close:hover { opacity: 1; }
       #addtab { padding: 4px 10px; cursor: pointer; opacity: 0.7; font-size: 14px; }
       #addtab:hover { opacity: 1; }
-      #panes { flex: 1; display: flex; position: relative; overflow: hidden; }
+      #panes { flex: 1; display: flex; position: relative; overflow: hidden;
+        background: rgba(12, 12, 12, 0.55); }
       .pane { flex: 1; position: relative; outline: none; }
-      .pane.focused { box-shadow: inset 0 0 0 1px var(--accent); }
-      canvas { display: block; width: 100%; height: 100%; }
-      #status { font-size: 11px; padding: 2px 8px; background: #1f1f1f;
-        border-top: 1px solid #333; color: #888; }
+      .pane.focused { box-shadow: inset 0 0 0 1px var(--accent),
+        inset 0 0 24px rgba(0,120,212,0.25); }
+      .pane canvas { display: block; width: 100%; height: 100%; }
+      #status { font-size: 11px; padding: 2px 8px;
+        background: rgba(31, 31, 31, 0.55);
+        border-top: 1px solid rgba(255,255,255,0.08); color: #bbb;
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
     </style>
   </head>
   <body>
+    <canvas id="bgfx" aria-hidden="true"></canvas>
+    <script>
+      // Wild animated background: plasma gradient + rainbow matrix rain + drifting particles.
+      (function () {
+        const cvs = document.getElementById('bgfx');
+        const ctx = cvs.getContext('2d', { alpha: true });
+        if (!ctx) return;
+
+        let W = 0, H = 0, dpr = Math.max(1, window.devicePixelRatio || 1);
+        const GLYPHS = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#$%&*+=<>/\\|アイウエオカキクケコサシスセソタチツテト'.split('');
+        const FONT_SIZE = 16;
+        let columns = [];
+        let particles = [];
+
+        function resetColumns() {
+          const cols = Math.ceil(W / (FONT_SIZE * dpr));
+          columns = new Array(cols).fill(0).map(() => ({
+            y: Math.random() * H / dpr * -1,
+            speed: 2 + Math.random() * 6,
+            hue: Math.random() * 360,
+            len: 8 + Math.floor(Math.random() * 24),
+          }));
+        }
+
+        function resetParticles() {
+          particles = new Array(60).fill(0).map(() => ({
+            x: Math.random() * W / dpr,
+            y: Math.random() * H / dpr,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: (Math.random() - 0.5) * 0.4,
+            r: 0.6 + Math.random() * 1.8,
+            hue: Math.random() * 360,
+          }));
+        }
+
+        function resize() {
+          dpr = Math.max(1, window.devicePixelRatio || 1);
+          W = cvs.width = Math.floor(window.innerWidth * dpr);
+          H = cvs.height = Math.floor(window.innerHeight * dpr);
+          cvs.style.width = window.innerWidth + 'px';
+          cvs.style.height = window.innerHeight + 'px';
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          resetColumns();
+          resetParticles();
+        }
+        window.addEventListener('resize', resize, { passive: true });
+        resize();
+
+        let t = 0;
+        function frame() {
+          t += 1;
+          const w = W / dpr, h = H / dpr;
+
+          // Plasma background (radial moving gradients)
+          const cx1 = w * (0.5 + 0.35 * Math.sin(t * 0.004));
+          const cy1 = h * (0.5 + 0.35 * Math.cos(t * 0.003));
+          const cx2 = w * (0.5 + 0.4 * Math.cos(t * 0.0025));
+          const cy2 = h * (0.5 + 0.4 * Math.sin(t * 0.0035));
+          const hue1 = (t * 0.3) % 360;
+          const hue2 = (t * 0.5 + 180) % 360;
+
+          // base wipe with slight trail (low alpha) — gives matrix rain its tail
+          ctx.fillStyle = 'rgba(4, 0, 12, 0.18)';
+          ctx.fillRect(0, 0, w, h);
+
+          const g1 = ctx.createRadialGradient(cx1, cy1, 10, cx1, cy1, Math.max(w, h) * 0.7);
+          g1.addColorStop(0, `hsla(${hue1}, 90%, 55%, 0.22)`);
+          g1.addColorStop(1, 'hsla(0, 0%, 0%, 0)');
+          ctx.fillStyle = g1;
+          ctx.fillRect(0, 0, w, h);
+
+          const g2 = ctx.createRadialGradient(cx2, cy2, 10, cx2, cy2, Math.max(w, h) * 0.6);
+          g2.addColorStop(0, `hsla(${hue2}, 90%, 55%, 0.18)`);
+          g2.addColorStop(1, 'hsla(0, 0%, 0%, 0)');
+          ctx.fillStyle = g2;
+          ctx.fillRect(0, 0, w, h);
+
+          // Matrix rain
+          ctx.font = `bold ${FONT_SIZE}px "Cascadia Mono", Menlo, Consolas, monospace`;
+          ctx.textBaseline = 'top';
+          for (let i = 0; i < columns.length; i++) {
+            const c = columns[i];
+            const x = i * FONT_SIZE;
+            c.y += c.speed;
+            c.hue = (c.hue + 0.6) % 360;
+
+            // tail
+            for (let k = 0; k < c.len; k++) {
+              const yy = c.y - k * FONT_SIZE;
+              if (yy < -FONT_SIZE || yy > h) continue;
+              const ch = GLYPHS[(Math.random() * GLYPHS.length) | 0];
+              const a = (1 - k / c.len);
+              if (k === 0) {
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = `hsla(${c.hue}, 100%, 70%, 0.9)`;
+                ctx.fillStyle = `hsla(${c.hue}, 100%, 85%, ${a})`;
+              } else {
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = `hsla(${c.hue}, 95%, ${20 + 40 * a}%, ${a * 0.85})`;
+              }
+              ctx.fillText(ch, x, yy);
+            }
+            if (c.y - c.len * FONT_SIZE > h) {
+              c.y = -Math.random() * 200;
+              c.speed = 2 + Math.random() * 6;
+              c.len = 8 + Math.floor(Math.random() * 24);
+            }
+          }
+          ctx.shadowBlur = 0;
+
+          // Drifting glowing particles
+          for (const p of particles) {
+            p.x += p.vx; p.y += p.vy;
+            p.hue = (p.hue + 0.4) % 360;
+            if (p.x < 0) p.x = w; else if (p.x > w) p.x = 0;
+            if (p.y < 0) p.y = h; else if (p.y > h) p.y = 0;
+            const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 8);
+            grad.addColorStop(0, `hsla(${p.hue}, 100%, 75%, 0.9)`);
+            grad.addColorStop(1, `hsla(${p.hue}, 100%, 50%, 0)`);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * 8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Subtle scanlines
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.06)';
+          for (let y = 0; y < h; y += 3) ctx.fillRect(0, y, w, 1);
+
+          requestAnimationFrame(frame);
+        }
+
+        // Pause when the tab is hidden to save CPU.
+        let rafOn = true;
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) rafOn = false;
+          else if (!rafOn) { rafOn = true; requestAnimationFrame(frame); }
+        });
+        requestAnimationFrame(frame);
+      })();
+    </script>
     <div id="app">
       <div id="tabbar">
         <div id="tabs"></div>
